@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FraudGuard — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #00ff9d;
+    --danger: #ff3366;
+    --warn: #ffaa00;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --card: #16161f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,157,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 3rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; color: var(--accent); }
+  .logo span { color: var(--text); }
+  nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+  nav a:hover { color: var(--accent); }
+
+  .page-header {
+    padding: 3rem 3rem 2rem;
+    position: relative;
+    z-index: 1;
+  }
+  .tag {
+    display: inline-block;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    padding: 0.3rem 1rem;
+    border-radius: 2px;
+    margin-bottom: 1rem;
+  }
+  h1 { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 0 3rem;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    animation: fadeIn 0.5s ease;
+  }
+  .stat-label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; }
+  .stat-value.green { color: var(--accent); }
+  .stat-value.red { color: var(--danger); }
+  .stat-value.warn { color: var(--warn); }
+  .stat-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    padding: 0 3rem;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    animation: slideUp 0.6s ease;
+  }
+  .chart-title {
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+  }
+  canvas { max-height: 280px; }
+
+  .full-width {
+    grid-column: 1 / -1;
+  }
+
+  .model-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 0 3rem 3rem;
+    position: relative;
+    z-index: 1;
+  }
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+  .info-title { font-size: 0.72rem; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 1rem; }
+  .info-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row span:last-child { color: var(--accent); }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: repeat(2, 1fr); padding: 0 1.5rem; }
+    .charts-grid { grid-template-columns: 1fr; padding: 0 1.5rem; }
+    .model-info { grid-template-columns: 1fr; padding: 0 1.5rem 3rem; }
+    nav { padding: 1rem 1.5rem; }
+    .page-header { padding: 2rem 1.5rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Fraud<span>Guard</span></div>
+  <a href="/">← Analyzer</a>
+</nav>
+
+<div class="page-header">
+  <div class="tag">MODEL DASHBOARD</div>
+  <h1>Performance Overview</h1>
+</div>
+
+<!-- Stat Cards -->
+<div class="grid">
+  <div class="stat-card">
+    <div class="stat-label">TOTAL TRANSACTIONS</div>
+    <div class="stat-value green">284,807</div>
+    <div class="stat-sub">Training dataset size</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">FRAUD CASES</div>
+    <div class="stat-value red">492</div>
+    <div class="stat-sub">0.17% of all transactions</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">ROC-AUC SCORE</div>
+    <div class="stat-value warn">0.9688</div>
+    <div class="stat-sub">Random Forest model</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">FRAUD RECALL</div>
+    <div class="stat-value green">85%+</div>
+    <div class="stat-sub">Fraud cases detected</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+
+  <div class="chart-card">
+    <div class="chart-title">// Class Distribution</div>
+    <canvas id="classChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">// Model Comparison — ROC-AUC</div>
+    <canvas id="modelChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">// Top Feature Importances (V-Features)</div>
+    <canvas id="featureChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">// Precision / Recall / F1 — Random Forest</div>
+    <canvas id="metricsChart"></canvas>
+  </div>
+
+</div>
+
+<!-- Model Info -->
+<div class="model-info">
+  <div class="info-card">
+    <div class="info-title">// MODEL CONFIGURATION</div>
+    <div class="info-row"><span>Algorithm</span><span>Random Forest</span></div>
+    <div class="info-row"><span>Estimators</span><span>100 trees</span></div>
+    <div class="info-row"><span>Class Weight</span><span>balanced</span></div>
+    <div class="info-row"><span>Train/Test Split</span><span>80% / 20%</span></div>
+    <div class="info-row"><span>Random State</span><span>42</span></div>
+  </div>
+  <div class="info-card">
+    <div class="info-title">// PREPROCESSING</div>
+    <div class="info-row"><span>Scaler</span><span>StandardScaler</span></div>
+    <div class="info-row"><span>Imbalance Fix</span><span>SMOTE</span></div>
+    <div class="info-row"><span>After SMOTE</span><span>227,451 each</span></div>
+    <div class="info-row"><span>Features</span><span>V1–V28 + Amount + Time</span></div>
+    <div class="info-row"><span>Total Features</span><span>30</span></div>
+  </div>
+  <div class="info-card">
+    <div class="info-title">// TECH STACK</div>
+    <div class="info-row"><span>Language</span><span>Python 3</span></div>
+    <div class="info-row"><span>Framework</span><span>Flask</span></div>
+    <div class="info-row"><span>ML Library</span><span>scikit-learn</span></div>
+    <div class="info-row"><span>Data</span><span>pandas, NumPy</span></div>
+    <div class="info-row"><span>Dataset</span><span>Kaggle (ULB)</span></div>
+  </div>
+</div>
+
+<script>
+const chartDefaults = {
+  color: '#6b6b8a',
+  font: { family: 'DM Mono', size: 11 }
+};
+Chart.defaults.color = chartDefaults.color;
+Chart.defaults.font = chartDefaults.font;
+
+// 1. Class Distribution Doughnut
+new Chart(document.getElementById('classChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Legitimate (99.83%)', 'Fraud (0.17%)'],
+    datasets: [{
+      data: [284315, 492],
+      backgroundColor: ['rgba(0,255,157,0.8)', 'rgba(255,51,102,0.8)'],
+      borderColor: ['#00ff9d', '#ff3366'],
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 20 } }
+    },
+    cutout: '65%'
+  }
+});
+
+// 2. Model Comparison Bar
+new Chart(document.getElementById('modelChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Logistic Regression', 'Random Forest'],
+    datasets: [{
+      label: 'ROC-AUC Score',
+      data: [0.9698, 0.9688],
+      backgroundColor: ['rgba(0,255,157,0.3)', 'rgba(0,255,157,0.7)'],
+      borderColor: ['#00ff9d', '#00ff9d'],
+      borderWidth: 2,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: {
+        min: 0.95, max: 1.0,
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { callback: v => v.toFixed(3) }
+      },
+      x: { grid: { display: false } }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// 3. Feature Importance Horizontal Bar
+new Chart(document.getElementById('featureChart'), {
+  type: 'bar',
+  data: {
+    labels: ['V14','V4','V12','V10','V11','V17','V3','V16','V7','V2'],
+    datasets: [{
+      label: 'Importance',
+      data: [0.142, 0.098, 0.087, 0.081, 0.075, 0.068, 0.062, 0.058, 0.051, 0.044],
+      backgroundColor: 'rgba(255,170,0,0.6)',
+      borderColor: '#ffaa00',
+      borderWidth: 1,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { grid: { display: false } }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// 4. Metrics Radar
+new Chart(document.getElementById('metricsChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Precision\n(Fraud)', 'Recall\n(Fraud)', 'F1-Score\n(Fraud)', 'ROC-AUC', 'Accuracy'],
+    datasets: [{
+      label: 'Random Forest',
+      data: [0.88, 0.85, 0.86, 0.97, 0.97],
+      backgroundColor: 'rgba(0,255,157,0.1)',
+      borderColor: '#00ff9d',
+      borderWidth: 2,
+      pointBackgroundColor: '#00ff9d',
+    }, {
+      label: 'Logistic Regression',
+      data: [0.06, 0.92, 0.11, 0.97, 0.97],
+      backgroundColor: 'rgba(255,51,102,0.1)',
+      borderColor: '#ff3366',
+      borderWidth: 2,
+      pointBackgroundColor: '#ff3366',
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      r: {
+        min: 0, max: 1,
+        grid: { color: 'rgba(255,255,255,0.08)' },
+        angleLines: { color: 'rgba(255,255,255,0.08)' },
+        ticks: { display: false }
+      }
+    },
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
+</script>
+</body>
+</html>

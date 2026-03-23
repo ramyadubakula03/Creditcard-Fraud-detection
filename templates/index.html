@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FraudGuard — Transaction Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #00ff9d;
+    --danger: #ff3366;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --card: #16161f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,157,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 3rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+  .logo span { color: var(--text); }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+  nav a:hover { color: var(--accent); }
+
+  .hero {
+    text-align: center;
+    padding: 4rem 2rem 2rem;
+    position: relative;
+    z-index: 1;
+  }
+  .tag {
+    display: inline-block;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    padding: 0.3rem 1rem;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.5s ease;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    animation: fadeIn 0.6s ease;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 3rem;
+    animation: fadeIn 0.7s ease;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2.5rem;
+    animation: slideUp 0.6s ease;
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+  }
+
+  .quick-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    padding: 0.7rem 1rem;
+    border-radius: 4px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,255,157,0.1);
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  .v-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.8rem;
+    margin-bottom: 2rem;
+  }
+  .v-grid .input-group input {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    line-height: 1.6;
+  }
+  .hint strong { color: var(--text); }
+
+  .btn-row {
+    display: flex;
+    gap: 1rem;
+  }
+  .btn-predict {
+    flex: 1;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 1rem 2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,255,157,0.3);
+  }
+  .btn-predict:active { transform: translateY(0); }
+
+  .btn-demo {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .btn-demo:hover { color: var(--text); border-color: var(--muted); }
+
+  /* Result */
+  .result-card {
+    margin-top: 2rem;
+    padding: 2rem;
+    border-radius: 8px;
+    display: none;
+    animation: slideUp 0.4s ease;
+    border: 1px solid;
+  }
+  .result-card.legit {
+    background: rgba(0,255,157,0.05);
+    border-color: var(--accent);
+  }
+  .result-card.fraud {
+    background: rgba(255,51,102,0.05);
+    border-color: var(--danger);
+  }
+  .result-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+  }
+  .result-card.legit .result-label { color: var(--accent); }
+  .result-card.fraud .result-label { color: var(--danger); }
+
+  .prob-row {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+  }
+  .prob-item { flex: 1; }
+  .prob-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.4rem; }
+  .prob-bar-wrap {
+    background: var(--border);
+    border-radius: 2px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .prob-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+  .prob-bar.legit { background: var(--accent); }
+  .prob-bar.fraud { background: var(--danger); }
+  .prob-value {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-top: 0.3rem;
+  }
+
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+  }
+  .loading::after {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-left: 8px;
+    animation: pulse 1s infinite;
+  }
+
+  .dashboard-link {
+    text-align: center;
+    margin-top: 3rem;
+  }
+  .dashboard-link a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 2px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .dashboard-link a:hover { color: var(--accent); border-color: var(--accent); }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  @media (max-width: 600px) {
+    .quick-inputs { grid-template-columns: 1fr; }
+    .v-grid { grid-template-columns: repeat(2, 1fr); }
+    nav { padding: 1rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Fraud<span>Guard</span></div>
+  <a href="/dashboard">→ Dashboard</a>
+</nav>
+
+<div class="hero">
+  <div class="tag">ML-POWERED DETECTION</div>
+  <h1>Is this transaction <em>legitimate?</em></h1>
+  <p class="subtitle">Random Forest model trained on 284,807 real transactions</p>
+</div>
+
+<div class="container">
+  <div class="form-card">
+    <div class="section-label">// Transaction Details</div>
+
+    <div class="quick-inputs">
+      <div class="input-group">
+        <label>AMOUNT (USD)</label>
+        <input type="number" id="amount" placeholder="e.g. 149.62" step="0.01"/>
+      </div>
+      <div class="input-group">
+        <label>TIME (seconds from first transaction)</label>
+        <input type="number" id="time" placeholder="e.g. 0"/>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+    <div class="section-label">// PCA Features (V1 — V28)</div>
+
+    <div class="hint">
+      <strong>What are V1–V28?</strong> These are anonymized PCA-transformed features from the original dataset to protect user privacy. For testing, use the <strong>Load Demo Data</strong> button below to auto-fill realistic values.
+    </div>
+
+    <div class="v-grid" id="v-inputs"></div>
+
+    <div class="btn-row">
+      <button class="btn-predict" onclick="predict()">ANALYZE TRANSACTION</button>
+      <button class="btn-demo" onclick="loadDemo()">Load Demo Data</button>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">ANALYZING TRANSACTION</div>
+
+  <div class="result-card" id="result">
+    <div class="result-label" id="result-label"></div>
+    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem" id="result-sub"></div>
+    <div class="prob-row">
+      <div class="prob-item">
+        <div class="prob-label">LEGITIMATE PROBABILITY</div>
+        <div class="prob-bar-wrap"><div class="prob-bar legit" id="bar-legit" style="width:0%"></div></div>
+        <div class="prob-value" id="val-legit" style="color:var(--accent)"></div>
+      </div>
+      <div class="prob-item">
+        <div class="prob-label">FRAUD PROBABILITY</div>
+        <div class="prob-bar-wrap"><div class="prob-bar fraud" id="bar-fraud" style="width:0%"></div></div>
+        <div class="prob-value" id="val-fraud" style="color:var(--danger)"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-link">
+    <a href="/dashboard">VIEW MODEL DASHBOARD & CHARTS →</a>
+  </div>
+</div>
+
+<script>
+  // Generate V1-V28 inputs
+  const vGrid = document.getElementById('v-inputs');
+  for (let i = 1; i <= 28; i++) {
+    vGrid.innerHTML += `
+      <div class="input-group">
+        <label>V${i}</label>
+        <input type="number" id="V${i}" placeholder="0.00" step="0.0001"/>
+      </div>`;
+  }
+
+  // Demo data — a known legitimate transaction from the dataset
+  function loadDemo() {
+    const demoLegit = {
+      time: 0, amount: 149.62,
+      V1:-1.3598071336738,V2:-0.0727811733098497,V3:2.53634673796914,V4:1.37815522427443,
+      V5:-0.338320769942518,V6:0.462387777762292,V7:0.239598554061257,V8:0.0986979012610507,
+      V9:0.363786969611213,V10:0.0907941719789316,V11:-0.551599533260813,V12:-0.617800855762348,
+      V13:-0.991389847235408,V14:-0.311169353699879,V15:1.46817697209427,V16:-0.470400525259478,
+      V17:0.207971241929242,V18:0.0257905801985591,V19:0.403992960255733,V20:0.251412098239705,
+      V21:-0.018306777944153,V22:0.277837575558899,V23:-0.110473910188767,V24:0.0669280749146731,
+      V25:0.128539358273528,V26:-0.189114843888824,V27:0.133558376740387,V28:-0.0210530534538215
+    };
+    document.getElementById('amount').value = demoLegit.amount;
+    document.getElementById('time').value = demoLegit.time;
+    for (let i = 1; i <= 28; i++) {
+      document.getElementById(`V${i}`).value = demoLegit[`V${i}`];
+    }
+  }
+
+  async function predict() {
+    const data = {
+      amount: document.getElementById('amount').value || 0,
+      time: document.getElementById('time').value || 0,
+    };
+    for (let i = 1; i <= 28; i++) {
+      data[`V${i}`] = document.getElementById(`V${i}`).value || 0;
+    }
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result').style.display = 'none';
+
+    try {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      document.getElementById('loading').style.display = 'none';
+
+      if (json.status === 'success') {
+        const card = document.getElementById('result');
+        card.className = 'result-card ' + (json.prediction === 1 ? 'fraud' : 'legit');
+        card.style.display = 'block';
+        document.getElementById('result-label').textContent = json.label;
+        document.getElementById('result-sub').textContent =
+          `Model confidence: ${json.prediction === 1 ? json.fraud_probability : json.legit_probability}%`;
+        setTimeout(() => {
+          document.getElementById('bar-legit').style.width = json.legit_probability + '%';
+          document.getElementById('bar-fraud').style.width = json.fraud_probability + '%';
+        }, 100);
+        document.getElementById('val-legit').textContent = json.legit_probability + '%';
+        document.getElementById('val-fraud').textContent = json.fraud_probability + '%';
+      }
+    } catch(e) {
+      document.getElementById('loading').style.display = 'none';
+      alert('Error connecting to server.');
+    }
+  }
+</script>
+</body>
+</html>
